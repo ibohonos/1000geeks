@@ -8,6 +8,10 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xls;
 
 class HomeController extends AbstractController
 {
@@ -31,11 +35,13 @@ class HomeController extends AbstractController
 	/**
 	 * @Route("/generate", name="generate", methods={"POST"})
 	 * @param Request $request
-	 * @return null|JsonResponse
+	 * @return BinaryFileResponse|JsonResponse
 	 * @throws \Doctrine\ORM\ORMException
 	 * @throws \Doctrine\ORM\OptimisticLockException
+	 * @throws \PhpOffice\PhpSpreadsheet\Exception
+	 * @throws \PhpOffice\PhpSpreadsheet\Writer\Exception
 	 */
-	public function generate(Request $request): ?JsonResponse
+	public function generate(Request $request)
 	{
 		$entityManager = $this->getDoctrine()->getManager();
 		$export = $request->get('export');
@@ -48,7 +54,22 @@ class HomeController extends AbstractController
 		$res = RandomizerUtil::rand($this->codeRepository, $entityManager, $nb);
 
 		if ($export === "xls") :
-			return $this->json("Hello XLS");
+			$spreadsheet = new Spreadsheet();
+
+			$sheet = $spreadsheet->getActiveSheet();
+
+			foreach ($res as $key => $val) :
+				$sheet->setCellValue('A' . ++$key, $val);
+			endforeach;
+
+			$writer = new Xls($spreadsheet);
+
+			$fileName = "code" . time() . ".xls";
+			$temp_file = tempnam(sys_get_temp_dir(), $fileName);
+
+			$writer->save($temp_file);
+
+			return $this->file($temp_file, $fileName, ResponseHeaderBag::DISPOSITION_INLINE);
 		endif;
 
 		return $this->json($res);
