@@ -53,4 +53,24 @@ class HomeController extends AbstractController
 
 		return $this->json($res);
 	}
+
+	/**
+	 * @Route("/{code}", name="code")
+	 * @param string $code
+	 * @return JsonResponse
+	 */
+	public function show(string $code): JsonResponse
+	{
+		try {
+			$codeRep = $this->codeRepository->findOneBy(['code' => $code]);
+		} catch (\Exception $e) {
+			return $this->json($e->getMessage(), 500);
+		}
+
+		if (!$codeRep) :
+			return $this->json(["Code not found"], 404);
+		endif;
+
+		return $this->json($codeRep);
+	}
 }
